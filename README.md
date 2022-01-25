@@ -16,19 +16,19 @@ A repo holds my scripts for bangortalk corpora.
 		                        a list of corpora to be downloaded
 		                        
 The data structure look like:
->📦bangortalk
-> ┣ 📂miami
-> ┃ ┣ 📂herring1
-> ┃ ┃ ┣ 📜herring1.cha
-> ┃ ┃ ┣ 📜herring1.mp3
-> ┃ ┃ ┗ 📜herring1.txt
-> ┣ 📂patagonia
-> ┃ ┣ 📂patagonia1
-> ┃ ┃ ┣ 📜patagonia1.cha
-> ┃ ┃ ┣ 📜patagonia1.mp3
-> ┃ ┃ ┗ 📜patagonia1.txt
-> ┗ 📂siarad
-> ┃ ┣ 📂davies1
-> ┃ ┃ ┣ 📜davies1.cha
-> ┃ ┃ ┣ 📜davies1.mp3
-> ┃ ┃ ┗ 📜davies1.txt
+📦bangortalk
+ ┣ 📂miami
+ ┃ ┣ 📂herring1
+ ┃ ┃ ┣ 📜herring1.cha
+ ┃ ┃ ┣ 📜herring1.mp3
+ ┃ ┃ ┗ 📜herring1.txt
+ ┣ 📂patagonia
+ ┃ ┣ 📂patagonia1
+ ┃ ┃ ┣ 📜patagonia1.cha
+ ┃ ┃ ┣ 📜patagonia1.mp3
+ ┃ ┃ ┗ 📜patagonia1.txt
+ ┗ 📂siarad
+ ┃ ┣ 📂davies1
+ ┃ ┃ ┣ 📜davies1.cha
+ ┃ ┃ ┣ 📜davies1.mp3
+ ┃ ┃ ┗ 📜davies1.txt
