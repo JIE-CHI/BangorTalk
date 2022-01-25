@@ -15,7 +15,7 @@ A repo holds my scripts for bangortalk corpora.
 	  -c CORPORA [CORPORA ...], --corpora CORPORA [CORPORA ...]
 		                        a list of corpora to be downloaded
 		                        
-The data structure look like:
+The data structure looks like:
 ```bash
 ./bangortalk/
 ├── miami
