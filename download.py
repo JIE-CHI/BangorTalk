@@ -38,26 +38,77 @@ def html_parse (corpus, data_dir):
             tags = tr.findAll('td')[1:4]
             fout.writelines("{0:<10}{1:<10}{2:<10}\n".format(tags[0].text, tags[1].text, tags[2].text))
             
+def prepare (corpora, data_dir):
+
+    base_dir = data_dir
+    bash_file = 'trim.sh'
+    bash = open(bash_file,'w')
+    bash.writelines("#!/bin/bash\n")
+    wavscp = open(base_dir+'/wav.scp','w')
+    fout = open(base_dir+'/trans','w')
+    utt2spk = open(base_dir + '/utt2spk', 'w')
+    for corpus in corpora:
+        corpus_dir = pathlib.Path(os.path.join(base_dir, corpus))
+        
+        for audio in corpus_dir.iterdir():
             
+            p = audio / 'split'
+            p.mkdir(parents=True, exist_ok=True)
+            
+            chat_file = os.path.join(str(audio) , audio.name +'.cha')
+            count = 0
+            with open(chat_file, 'r') as f:
+                for line in f:
+                    if '\x15' in line and line[0] == '*':
+                        count += 1
+                        line = line.replace('\x15', '')
+                        print(line)
+                        start, end = (line.split()[-1]).split('_')
+                        speaker = line.split(':')[0][1::]
+                        text = ' '.join((line.split(':')[1]).split()[0:-1])      
+                        print(speaker, text)
+                        utterid = speaker + '-' + audio.name + f'-{count:04}'
+                        print(start, end)
+                        fout.writelines(f"utterid\t{' '.join(text)}\n")
+                        wavscp.writelines(f"utterid\t{os.path.join(str(p), utterid)}.wav\n")
+                        utt2spk.writelines(f"{speaker}-{audio.name}\t{utterid}\t")
+                        #f"{5:04}"
+                        cmd = f"ffmpeg -i {os.path.join(str(audio), audio.name + '.mp3')} -ss {int(start)/1000} -to {int(end)/1000} -ar 16000 {os.path.join(str(p), utterid)}.wav"
+                        print(cmd)
+                        bash.writelines(cmd + "\n")
+    
+    os.system(f"bash {bash_file}")     
+
+def clean (corpus, data_dir):
+    pass
+
+def data_split(corpus, data_dir, file_list):
+    pass
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download corpus from http://www.bangortalk.org.uk/.",
                                      usage="python download.py --data_dir ./ --corpora siarad miami")
     parser.add_argument("-d", "--data_dir", type=str, nargs="?", default='/home/jiechi/ssd_home/data/codeswitch', help='dir to save the data')
     parser.add_argument("-c", "--corpora", nargs="+", default=['siarad', 'patagonia', 'miami'], help='a list of corpora to be downloaded')
-    
+    parser.add_argument("-fs", "--first_step", type=str, nargs="?", default='1', help='1:download data 2:preprocess')
+
     value = parser.parse_args()
     data_dir = value.data_dir
     corpora = value.corpora
+    fs = int(value.first_step)
     print(data_dir)
     print(corpora)
-    p = pathlib.Path(os.path.join(data_dir, 'bangortalk'))
-    p.mkdir(parents=True, exist_ok=True)
-    
-    #corpus name
-    #corpora = ['siarad', 'patagonia', 'miami']
-    for i in corpora:
-        p = pathlib.Path(os.path.join(data_dir, 'bangortalk', i))
+    if fs <=1:
+        p = pathlib.Path(os.path.join(data_dir, 'bangortalk'))
         p.mkdir(parents=True, exist_ok=True)
-        html_parse(i, os.path.join(data_dir, 'bangortalk', i))
+    
+        #corpus name
+        #corpora = ['siarad', 'patagonia', 'miami']
+        for i in corpora:
+            p = pathlib.Path(os.path.join(data_dir, 'bangortalk', i))
+            p.mkdir(parents=True, exist_ok=True)
+            html_parse(i, os.path.join(data_dir, 'bangortalk', i))
+    if fs <=2:
+        prepare(corpora, os.path.join(data_dir, 'bangortalk'))
+        
 
