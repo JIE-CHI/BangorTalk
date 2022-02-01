@@ -111,7 +111,7 @@ for corpus in corpora:
                     # break
                     fout.writelines(f"{utterid}\t{' '.join(text)}\n")
                     wavscp.writelines(f"{utterid}\t{os.path.join(str(p), utterid)}.wav\n")
-                    utt2spk.writelines(f"{speaker}-{audio.name}\t{utterid}\t")
+                    utt2spk.writelines(f"{utterid}\t{speaker}-{audio.name}\n")
                     #f"{5:04}"
                     # cmd = f"ffmpeg -y -i {os.path.join(str(audio), audio.name + '.mp3')} -ss {int(start)/1000} -to {int(end)/1000} -ar 16000 {os.path.join(str(p), utterid)}.wav"
                     # print(cmd)
