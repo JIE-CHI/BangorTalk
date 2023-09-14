@@ -11,6 +11,7 @@ import os
 import argparse
 from bs4 import BeautifulSoup
 import multiprocessing
+import re
 
 def html_parse (corpus, data_dir):
     base_url = 'http://www.bangortalk.org.uk/'
@@ -43,7 +44,6 @@ def worker(bash_file):
 
     
 def prepare (corpora, data_dir):
-
     base_dir = data_dir
     wavscp = open(base_dir+'/wav.scp','w')
     fout = open(base_dir+'/trans','w')
@@ -63,20 +63,77 @@ def prepare (corpora, data_dir):
             count = 0
             with open(chat_file, 'r') as f:
                 for line in f:
+                    if 'Language markers:' in line:
+                    # print(line)
+                        m = re.search('(?<=Untagged words are )(\w+)', line).group(1)
+
+                        if m == 'Spanish':
+                            marker = 's'
+                        elif m == 'English':
+                            marker = 'e'
+
+                        elif m == 'Welsh':
+                            marker = 'w'
                     if '\x15' in line and line[0] == '*':
+                        if '[- spa]' in line:
+                            m = 's'
+                            line = line.replace('[- spa]', '')
+                        elif '[- cym]' in line:
+                            m = 'w'
+                            line = line.replace('[- cym]', '')
+                        elif '[- eng]' in line:
+                            m = 'e'
+                            line = line.replace('[- eng]', '')
+                        else:
+                            m = marker
                         count += 1
                         line = line.replace('\x15', '')
-#                        print(line)
                         start, end = (line.split()[-1]).split('_')
                         speaker = line.split(':')[0][1::]
-                        text = ' '.join((line.split(':')[1]).split()[0:-1])
+                        words = (line.split("\t")[1]).split()[0:-1]
                         
-#                       print(speaker, text)
+                        text = []
+                        for word in words[0:-1]:
+                            if '@s:eng&spa' in word:
+                                word = word.replace('@s:eng&spa', '')
+                                word = 'esu_' + word
+                            elif '@s:spa+cym' in word:
+                                word = word.replace('@s:spa+cym', '')
+                                word = 'sw_' + word
+                            elif '@s:eng+spa' in word:
+                                word = word.replace('@s:eng+spa', '')
+                                word = 'es_' + word
+                            elif '@s:spa+eng' in word:
+                                word = word.replace('@s:spa+eng', '')
+                                word = 'se_' + word
+                            elif '@s:cym+spa' in word:
+                                word = word.replace('@s:cym+spa', '')
+                                word = 'ws_' + word
+                            elif '@s:cym&spa' in word:
+                                word = word.replace('@s:cym&spa', '')
+                                word = 'wsu_' + word
+                            elif '@s:cym&eng' in word:
+                                word = word.replace('@s:cym&eng', '')
+                                word = 'weu_' + word
+                            elif '@s:spa' in word:
+                                word = word.replace('@s:spa', '')
+                                word = 's_' + word
+                            elif '@s:eng' in word:
+                                word = word.replace('@s:eng', '')
+                                word = 'e_' + word
+                            elif '@s:cym' in word:
+                                word = word.replace('@s:cym', '')
+                                word = 'w_' + word
+                            else:
+                                word = m + '_' + word
+                            text.append(word)
+
+
                         utterid = speaker + '-' + audio.name + f'-{count:04}'
 #                        print(start, end)
-                        fout.writelines(f"utterid\t{' '.join(text)}\n")
-                        wavscp.writelines(f"utterid\t{os.path.join(str(p), utterid)}.wav\n")
-                        utt2spk.writelines(f"{speaker}-{audio.name}\t{utterid}\t")
+                        fout.writelines(f"{utterid}\t{' '.join(text)}\n")
+                        wavscp.writelines(f"{utterid}\t{os.path.join(str(p), utterid)}.wav\n")
+                        utt2spk.writelines(f"{speaker}-{audio.name}\t{utterid}\n")
                         #f"{5:04}"
                         cmd = f"ffmpeg -y -i {os.path.join(str(audio), audio.name + '.mp3')} -ss {int(start)/1000} -to {int(end)/1000} -ar 16000 {os.path.join(str(p), utterid)}.wav"
 #                        print(cmd)
@@ -91,10 +148,41 @@ def prepare (corpora, data_dir):
     os.system("rm trim*.sh") 
 
 def clean (corpus, data_dir):
-    pass
+    base_dir = data_dir
+    for corpus in corpora:
+        corpus_dir = pathlib.Path(os.path.join(base_dir, corpus))
+        cs_text = open(base_dir+'/text_cs','w')
+        eng_text = open(base_dir+'/text_en','w')
+        spa_text = open(base_dir + '/text_spa', 'w')
+        with open(base_dir+'/trans') as f:
+            for i in f:
+                utterid, text = i.split("\t")
+                words = text.split()
+                tags = set()
+                sent = []
+                for word in words:
+                    tag = word.split("_")[0]
+                    tokens = word.split("_")[1::]
+                    if len(tokens) > 1:
+                        token = ' '.join(tokens)
+                    else:
+                        token = tokens[0]
 
-def data_split(corpus, data_dir, file_list):
-    pass
+                    if ("&" not in token) and (token not in ['xxx', 'mmhm', 'www', 'mmm', 'uhuh']):
+                        ## not_permitted = ['[/.]+<']
+                        token = re.sub('\?|\.|\,|\!|\/|\;|\:|\[|\]|\+|\<|\\\|\>|\(|\)|\=|\"', '', token)
+
+                        if len(token) > 0 and (token not in ['xxx', 'mmhm', 'www', 'mmm']):
+                            tags.add(tag)
+                            sent.append(token.lower())
+                if len(sent) > 0:
+                    if tags == set('e') or tags == set(['esu']) or tags == set(['e','esu']):
+                        eng_text.writelines(f"{utterid}\t{' '.join(sent)}\n")
+                    elif tags == set('s') or tags == set(['s', 'esu']):
+                        spa_text.writelines(f"{utterid}\t{' '.join(sent)}\n")
+                    else:
+                        cs_text.writelines(f"{utterid}\t{' '.join(sent)}\n")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download corpus from http://www.bangortalk.org.uk/.",
@@ -105,14 +193,12 @@ if __name__ == "__main__":
                         help='a list of corpora to be downloaded')
     parser.add_argument("-fs", "--first_step", type=str, nargs="?", default='1',
                         help='1:download data 2:preprocess')
-    parser.add_argument("-sr", "--split_ref", type=str, nargs="?", default='None', 
-                        help='split data into train, dev, test based on this file, if None then split it randomly 8:1:1 ')
-
+    
     value = parser.parse_args()
     data_dir = value.data_dir
     corpora = value.corpora
     fs = int(value.first_step)
-    file_list = value.split_ref
+
     print(data_dir)
     print(corpora)
     if fs <= 1:
@@ -129,10 +215,5 @@ if __name__ == "__main__":
         prepare(corpora, os.path.join(data_dir, 'bangortalk'))
         
     if fs <= 3:
-        clean(corpora, data_dir)
-    
-    if fs <= 4:
-        data_split(corpora, data_dir, file_list=None)
-    
-        
+        clean(corpora, os.path.join(data_dir, 'bangortalk'))
 
